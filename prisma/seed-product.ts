@@ -233,8 +233,7 @@ const products = [
   },
 ]
 
-async function getOrCreateCategory(name: string | null) {
-  if (!name) return null
+async function getOrCreateCategory(name: string) {
   let category = await prisma.category.findFirst({ where: { name } })
   if (!category) {
     category = await prisma.category.create({ data: { name, isActive: true } })
@@ -261,6 +260,8 @@ async function main() {
     const categoryId = await getOrCreateCategory(item.categoryName)
     const brandId = await getOrCreateBrand(item.brandName)
 
+    if (!categoryId) continue; // Make TS happy just in case
+    
     const existing = await prisma.product.findFirst({
       where: { name: item.name },
     })
