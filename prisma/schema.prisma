@@ -1,0 +1,434 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  CASHIER
+  OWNER
+}
+
+enum TransactionStatus {
+  DRAFT
+  PAID
+  HOLD
+  VOID
+  CANCELLED
+}
+
+enum PaymentType {
+  CASH
+  TRANSFER
+  QRIS
+  DEBIT
+  CREDIT_CARD
+  E_WALLET
+}
+
+enum StockHistoryType {
+  SALE
+  PURCHASE
+  STOCK_OPNAME
+  ADJUSTMENT
+  RETURN
+}
+
+model User {
+  id          String   @id @default(cuid())
+  username    String   @unique
+  password    String
+  fullName    String
+  role        UserRole
+  isActive    Boolean  @default(true)
+
+  sales       Sale[]
+  purchases   Purchase[]
+  stockOpname StockOpname[]
+  activityLogs ActivityLog[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  @@index([username])
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  isActive    Boolean   @default(true)
+
+  products    Product[]
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@unique([name])
+}
+
+model Brand {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+
+  products    Product[]
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@unique([name])
+}
+
+model Supplier {
+  id          String     @id @default(cuid())
+  name        String
+  address     String?
+  phone       String?
+  email       String?
+  description String?
+  isActive    Boolean    @default(true)
+
+  products    Product[]
+  purchases   Purchase[]
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  deletedAt   DateTime?
+
+  @@index([name])
+}
+
+model Customer {
+  id          String    @id @default(cuid())
+  name        String
+  address     String?
+  phone       String?
+  email       String?
+  description String?
+  isActive    Boolean   @default(true)
+
+  sales       Sale[]
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([name])
+}
+
+model Product {
+  id              String   @id @default(cuid())
+  sku             String   @unique
+  barcode         String?  @unique
+
+  name            String
+  description     String?
+
+  categoryId      String
+  category        Category @relation(fields: [categoryId], references: [id])
+
+  brandId         String?
+  brand           Brand?   @relation(fields: [brandId], references: [id])
+
+  supplierId      String?
+  supplier        Supplier? @relation(fields: [supplierId], references: [id])
+
+  costPrice       Decimal @db.Decimal(18,2)
+  sellPrice       Decimal @db.Decimal(18,2)
+  wholesalePrice  Decimal? @db.Decimal(18,2)
+  promoPrice      Decimal? @db.Decimal(18,2)
+
+  stock           Int      @default(0)
+  minStock        Int      @default(0)
+  discount        Decimal? @default(0) @db.Decimal(18,2)
+
+  image           String?
+
+  isActive        Boolean  @default(true)
+  trackStock      Boolean  @default(true)
+
+  saleDetails     SaleDetail[]
+  purchaseDetails PurchaseDetail[]
+  stockHistories  StockHistory[]
+  opnameDetails   StockOpnameDetail[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
+
+  @@index([name])
+  @@index([sku])
+  @@index([barcode])
+}
+
+model PaymentMethod {
+  id            String      @id @default(cuid())
+  name          String
+  type          PaymentType @default(CASH)
+  bankName      String?
+  accountNumber String?
+  accountName   String?
+  isActive      Boolean     @default(true)
+
+  sales         Sale[]
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model Sale {
+  id               String            @id @default(cuid())
+  invoiceNumber    String            @unique
+
+  customerId       String?
+  customer         Customer?         @relation(fields: [customerId], references: [id])
+
+  userId           String
+  user             User              @relation(fields: [userId], references: [id])
+
+  paymentMethodId  String?
+  paymentMethod    PaymentMethod?    @relation(fields: [paymentMethodId], references: [id])
+
+  subtotal         Decimal           @db.Decimal(18,2)
+  discount         Decimal           @default(0) @db.Decimal(18,2)
+  tax              Decimal           @default(0) @db.Decimal(18,2)
+  grandTotal       Decimal           @db.Decimal(18,2)
+
+  paidAmount       Decimal           @default(0) @db.Decimal(18,2)
+  changeAmount     Decimal           @default(0) @db.Decimal(18,2)
+
+  notes            String?
+
+  status           TransactionStatus @default(PAID)
+
+  saleDetails      SaleDetail[]
+
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  deletedAt        DateTime?
+
+  @@index([invoiceNumber])
+  @@index([createdAt])
+}
+
+model SaleDetail {
+  id          String   @id @default(cuid())
+
+  saleId      String
+  sale        Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
+
+  quantity    Int
+  price       Decimal  @db.Decimal(18,2)
+  discount    Decimal  @default(0) @db.Decimal(18,2)
+  subtotal    Decimal  @db.Decimal(18,2)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([saleId])
+  @@index([productId])
+}
+
+model Purchase {
+  id              String    @id @default(cuid())
+  invoiceNumber   String    @unique
+
+  supplierId      String
+  supplier        Supplier  @relation(fields: [supplierId], references: [id])
+
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+
+  total           Decimal   @db.Decimal(18,2)
+  notes           String?
+
+  purchaseDetails PurchaseDetail[]
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  @@index([invoiceNumber])
+}
+
+model PurchaseDetail {
+  id           String   @id @default(cuid())
+
+  purchaseId   String
+  purchase     Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+
+  productId    String
+  product      Product  @relation(fields: [productId], references: [id])
+
+  quantity     Int
+  costPrice    Decimal  @db.Decimal(18,2)
+  subtotal     Decimal  @db.Decimal(18,2)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([purchaseId])
+  @@index([productId])
+}
+
+model StockOpname {
+  id          String               @id @default(cuid())
+  opnameNumber String             @unique
+
+  userId      String
+  user        User                 @relation(fields: [userId], references: [id])
+
+  notes       String?
+
+  details     StockOpnameDetail[]
+
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@index([opnameNumber])
+}
+
+model StockOpnameDetail {
+  id            String       @id @default(cuid())
+
+  stockOpnameId String
+  stockOpname   StockOpname  @relation(fields: [stockOpnameId], references: [id], onDelete: Cascade)
+
+  productId     String
+  product       Product      @relation(fields: [productId], references: [id])
+
+  systemStock   Int
+  physicalStock Int
+  difference    Int
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([stockOpnameId])
+  @@index([productId])
+}
+
+model StockHistory {
+  id          String           @id @default(cuid())
+
+  productId   String
+  product     Product          @relation(fields: [productId], references: [id])
+
+  type        StockHistoryType
+
+  quantity    Int
+  stockBefore Int
+  stockAfter  Int
+
+  referenceId String?
+  notes       String?
+
+  createdAt   DateTime         @default(now())
+
+  @@index([productId])
+  @@index([type])
+}
+
+model Setting {
+  id              String   @id @default(cuid())
+
+  // Informasi Toko
+  storeName       String   @default("Toko Saya")
+  storeAddress    String?
+  storePhone      String?
+  storeEmail      String?
+
+  // Kasir & Operasional
+  cashierName     String?
+  discountMethod  String   @default("Persen")
+  defaultTax      Decimal  @default(0) @db.Decimal(5,2)
+  transactionType String   @default("Invoice")
+  printMethod     String   @default("Export ke PDF")
+
+  // Logo
+  logo            String?
+
+  // Bank 1
+  bank1Name          String?
+  bank1AccountNumber String?
+  bank1AccountName   String?
+
+  // Bank 2
+  bank2Name          String?
+  bank2AccountNumber String?
+  bank2AccountName   String?
+
+  // Footer Struk Kasir
+  receiptFooter1  String?
+  receiptFooter2  String?
+  receiptFooter3  String?
+
+  // Footer Invoice & Faktur
+  invoiceFooter1  String?
+  invoiceFooter2  String?
+  invoiceFooter3  String?
+
+  // Hormat Kami
+  regards         String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+
+  action      String
+  description String?
+
+  ipAddress   String?
+  userAgent   String?
+
+  createdAt   DateTime @default(now())
+
+  @@index([action])
+  @@index([createdAt])
+}
+
+enum MenuCategory {
+  DASHBOARD
+  MASTER
+  TRANSAKSI
+  REPORT
+}
+
+model Menu {
+  id          String       @id @default(cuid())
+  name        String
+  path        String
+  icon        String?
+  category    MenuCategory @default(MASTER)
+  roles       UserRole[]
+  isActive    Boolean      @default(true)
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([name])
+}
+
