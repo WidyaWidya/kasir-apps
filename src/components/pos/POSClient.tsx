@@ -46,6 +46,7 @@ export default function POSClient({ initialData, currentUser }: POSClientProps) 
   const [globalTaxPercent, setGlobalTaxPercent] = useState(0);
 
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
 
   // Load default products on mount
   useEffect(() => {
@@ -236,16 +237,31 @@ export default function POSClient({ initialData, currentUser }: POSClientProps) 
         </div>
       </div>
 
+      {/* Mobile Cart Backdrop */}
+      {isMobileCartOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setIsMobileCartOpen(false)}
+        />
+      )}
+
       {/* Right Panel: Cart */}
-      <div className="w-full lg:w-[420px] xl:w-[480px] bg-white dark:bg-gray-800 flex flex-col h-[50vh] lg:h-auto shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] z-20">
+      <div className={`fixed inset-y-0 right-0 z-50 w-[85%] sm:w-[400px] lg:static lg:w-[420px] xl:w-[480px] bg-white dark:bg-gray-800 flex flex-col h-full lg:h-auto shadow-2xl lg:shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)] transform transition-transform duration-300 ${isMobileCartOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"}`}>
         <div className="p-4 bg-brand-600 text-white shadow-md">
           <div className="flex justify-between items-center mb-1">
             <h2 className="text-xl font-bold tracking-wide">KERANJANG</h2>
-            <button onClick={clearCart} className="text-brand-100 hover:text-white transition-colors" title="Kosongkan Keranjang">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
+            <div className="flex items-center gap-3">
+              <button onClick={clearCart} className="text-brand-100 hover:text-white transition-colors" title="Kosongkan Keranjang">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+              <button onClick={() => setIsMobileCartOpen(false)} className="lg:hidden text-brand-100 hover:text-white transition-colors">
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
           </div>
           <p className="text-brand-200 text-sm">Kasir: {currentUser.name}</p>
         </div>
@@ -374,6 +390,21 @@ export default function POSClient({ initialData, currentUser }: POSClientProps) 
           </button>
         </div>
       </div>
+
+      {/* Mobile FAB to open cart */}
+      <button 
+        onClick={() => setIsMobileCartOpen(true)}
+        className="lg:hidden fixed bottom-6 right-6 bg-brand-600 text-white p-4 rounded-full shadow-lg hover:bg-brand-700 transition-colors z-30 flex items-center justify-center"
+      >
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+        {cart.length > 0 && (
+          <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center border-2 border-white">
+            {cart.length}
+          </span>
+        )}
+      </button>
 
       {/* Checkout Modal */}
       <CheckoutModal
